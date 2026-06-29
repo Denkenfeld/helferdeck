@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Schulfest 2026 – Helfer-Anmeldeplan</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --glass:        rgba(255,255,255,0.62);
+  --glass-border: rgba(255,255,255,0.75);
+  --glass-deep:   rgba(255,255,255,0.45);
+  --blur:         18px;
+  --text:         #2d2d3a;
+  --text-soft:    #6b6b80;
+  --text-muted:   #a0a0b0;
+  --radius:       18px;
+  --radius-sm:    12px;
+  --accent:       #5b7fff;
+  --accent-light: rgba(91,127,255,0.12);
+  --success:      #34c77b;
+  --success-light:rgba(52,199,123,0.13);
+  --danger:       #ff5f7e;
+  --danger-light: rgba(255,95,126,0.12);
+  --shadow:       0 4px 24px rgba(100,120,200,0.10);
+  --shadow-card:  0 2px 16px rgba(100,120,200,0.09);
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  min-height: 100vh;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+  position: relative;
+}
+
+/* ── Bokeh canvas background ── */
+#bokeh-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* ── Layout ── */
+.app {
+  position: relative;
+  z-index: 1;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 2rem 1rem 6rem;
+}
+
+/* ── Glass mixin (reused) ── */
+.glass {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(var(--blur));
+  -webkit-backdrop-filter: blur(var(--blur));
+  box-shadow: var(--shadow);
+}
+
+/* ── Header ── */
+.page-header {
+  border-radius: var(--radius);
+  padding: 1.5rem 1.5rem 1.25rem;
+  margin-bottom: 1rem;
+}
+.header-top {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+.header-emoji {
+  font-size: 36px;
+  line-height: 1;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,.12));
+}
+.eyebrow {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  color: var(--accent);
+  font-weight: 600;
+  margin-bottom: 3px;
+}
+.page-title { font-size: 22px; font-weight: 700; letter-spacing: -.3px; }
+.page-date {
+  font-size: 12px;
+  color: var(--text-soft);
+  margin-top: 3px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.global-progress { margin-top: 14px; }
+.progress-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--text-soft);
+  margin-bottom: 6px;
+  font-variant-numeric: tabular-nums;
+}
+.progress-track {
+  height: 7px;
+  background: rgba(91,127,255,0.12);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #5b7fff, #a78bfa);
+  border-radius: 4px;
+  transition: width .5s cubic-bezier(.4,0,.2,1);
+}
+
+/* ── Area card ── */
+.area {
+  border-radius: var(--radius);
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+.area-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 1rem 1.25rem;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background .15s;
+  border-radius: var(--radius);
+}
+.area.open .area-header { border-radius: var(--radius) var(--radius) 0 0; }
+.area-header:active { background: rgba(255,255,255,0.2); }
+.area-emoji { font-size: 26px; flex-shrink: 0; line-height: 1; }
+.area-info { flex: 1; min-width: 0; }
+.area-name { font-size: 15px; font-weight: 600; }
+.area-stat { font-size: 12px; color: var(--text-soft); margin-top: 1px; }
+.chevron {
+  font-size: 18px;
+  color: var(--text-muted);
+  transition: transform .25s cubic-bezier(.4,0,.2,1);
+  flex-shrink: 0;
+}
+.chevron.open { transform: rotate(180deg); }
+
+/* ── Tasks ── */
+.tasks-list {
+  padding: 0 0.75rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.task {
+  background: var(--glass-deep);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+}
+.task-body { padding: 0.8rem 1rem; }
+.task-row { display: flex; align-items: flex-start; gap: 8px; }
+.task-text { flex: 1; min-width: 0; }
+.task-title { font-size: 13px; font-weight: 600; }
+.task-req { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.slots-row { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 9px; }
+.slot {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+.slot.filled {
+  background: var(--success-light);
+  color: #1e8a55;
+  border: 1px solid rgba(52,199,123,0.25);
+}
+.slot.empty {
+  background: rgba(255,255,255,0.5);
+  border: 1.5px dashed rgba(160,160,176,0.5);
+  color: var(--text-muted);
+}
+.slot-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--success); flex-shrink: 0; }
+.slot-remove {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--danger);
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 0 0 3px;
+  opacity: .6;
+}
+.slot-remove:hover { opacity: 1; }
+.slot-contact { font-size: 10px; color: var(--text-muted); font-weight: 400; }
+
+/* ── Buttons ── */
+.btn {
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1px solid rgba(91,127,255,0.25);
+  background: rgba(255,255,255,0.7);
+  color: var(--accent);
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background .15s, box-shadow .15s;
+  font-family: inherit;
+  line-height: 1.4;
+  backdrop-filter: blur(4px);
+}
+.btn:hover {
+  background: rgba(91,127,255,0.1);
+  box-shadow: 0 2px 8px rgba(91,127,255,0.15);
+}
+.btn.active {
+  background: rgba(160,160,176,0.12);
+  color: var(--text-muted);
+  border-color: transparent;
+}
+.btn-success {
+  background: var(--success);
+  color: #fff;
+  border-color: transparent;
+  font-size: 12px;
+  padding: 7px 16px;
+  box-shadow: 0 2px 10px rgba(52,199,123,0.3);
+}
+.btn-success:hover { opacity: .88; background: var(--success); color: #fff; }
+.badge-full {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--success);
+  font-weight: 600;
+  padding: 5px 0;
+}
+
+/* ── Join form ── */
+.form-panel {
+  padding: 0.8rem 1rem;
+  border-top: 1px solid rgba(255,255,255,0.5);
+  background: rgba(255,255,255,0.3);
+}
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+@media(max-width:420px){ .form-grid{ grid-template-columns:1fr; } }
+.form-grid input {
+  font-size: 12.5px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(91,127,255,0.2);
+  background: rgba(255,255,255,0.75);
+  color: var(--text);
+  font-family: inherit;
+  width: 100%;
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+.form-grid input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(91,127,255,0.12);
+  background: #fff;
+}
+.form-grid input::placeholder { color: var(--text-muted); }
+.form-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.privacy-note {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ── Admin bar ── */
+.admin-bar {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  z-index: 100;
+  background: rgba(255,255,255,0.7);
+  border-top: 1px solid rgba(255,255,255,0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  padding: 10px 20px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+.admin-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-soft);
+}
+.toggle {
+  position: relative;
+  width: 36px; height: 20px;
+  background: rgba(160,160,176,0.3);
+  border-radius: 12px;
+  transition: background .2s;
+  flex-shrink: 0;
+}
+.toggle.on { background: var(--accent); }
+.toggle::after {
+  content: '';
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  transition: left .2s;
+  box-shadow: 0 1px 4px rgba(0,0,0,.2);
+}
+.toggle.on::after { left: 18px; }
+.admin-hint { font-size: 11.5px; color: var(--text-muted); }
+
+/* ── Toast ── */
+.toast {
+  position: fixed;
+  bottom: 72px; left: 50%; transform: translateX(-50%) translateY(10px);
+  background: rgba(45,45,58,0.9);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 9px 18px;
+  border-radius: 20px;
+  opacity: 0;
+  transition: opacity .25s, transform .25s;
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 200;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 20px rgba(0,0,0,.15);
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<canvas id="bokeh-canvas"></canvas>
+
+<div class="app" id="app"></div>
+
+<div class="admin-bar">
+  <label class="admin-label" onclick="toggleAdmin()">
+    <div class="toggle" id="adm-toggle"></div>
+    <span>Admin-Ansicht</span>
+  </label>
+  <span class="admin-hint" id="adm-hint">Kontakte ausgeblendet</span>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ═══════════════════════════════════════════════
+   BOKEH BACKGROUND
+═══════════════════════════════════════════════ */
+(function() {
+  const canvas = document.getElementById('bokeh-canvas');
+  const ctx = canvas.getContext('2d');
+
+  // Calm warm palette — yellow, blue, green, peach; no purple
+  const palette = [
+    [255, 215, 110], // warm yellow
+    [175, 220, 255], // sky blue
+    [195, 240, 215], // mint green
+    [255, 200, 170], // soft peach
+    [160, 228, 255], // light blue
+    [255, 230, 140], // golden yellow
+  ];
+
+  let orbs = [];
+  const COUNT = 7;
+
+  function resize() {
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+
+  function makeOrb() {
+    const col = palette[Math.floor(Math.random() * palette.length)];
+    return {
+      x:   Math.random() * canvas.width,
+      y:   Math.random() * canvas.height,
+      r:   180 + Math.random() * 220,
+      dx:  (Math.random() - 0.5) * 0.12,
+      dy:  (Math.random() - 0.5) * 0.12,
+      col,
+      alpha: 0.13 + Math.random() * 0.12,
+    };
+  }
+
+  function initOrbs() {
+    orbs = Array.from({ length: COUNT }, makeOrb);
+  }
+
+  function drawOrb(o) {
+    const grd = ctx.createRadialGradient(o.x, o.y, 0, o.x, o.y, o.r);
+    const [r,g,b] = o.col;
+    grd.addColorStop(0,   `rgba(${r},${g},${b},${o.alpha})`);
+    grd.addColorStop(0.5, `rgba(${r},${g},${b},${o.alpha * 0.55})`);
+    grd.addColorStop(1,   `rgba(${r},${g},${b},0)`);
+    ctx.beginPath();
+    ctx.arc(o.x, o.y, o.r, 0, Math.PI * 2);
+    ctx.fillStyle = grd;
+    ctx.fill();
+  }
+
+  function step() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Warm white base
+    ctx.fillStyle = '#fdf8f4';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    orbs.forEach(o => {
+      o.x += o.dx;
+      o.y += o.dy;
+      if (o.x < -o.r) o.x = canvas.width + o.r;
+      if (o.x > canvas.width + o.r) o.x = -o.r;
+      if (o.y < -o.r) o.y = canvas.height + o.r;
+      if (o.y > canvas.height + o.r) o.y = -o.r;
+      drawOrb(o);
+    });
+
+    requestAnimationFrame(step);
+  }
+
+  window.addEventListener('resize', () => { resize(); initOrbs(); });
+  resize();
+  initOrbs();
+  step();
+})();
+
+/* ═══════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════ */
+const state = {
+  admin: false,
+  myNames: new Set(),   // names entered in this session — can self-remove
+  openAreas: { a1: true },
+  openForms: {},
+  data: {
+    areas: [
+      {
+        id: "a1", title: "Grillstation & Essen", icon: "🍖",
+        tasks: [
+          { id: "t11", title: "Aufbau Grill (11:00 – 12:00)", req: "Kraft von Vorteil", slots: 2, helpers: [] },
+          { id: "t12", title: "Grillschicht 1 (12:00 – 14:00)", req: "Wurstzange vorhanden", slots: 2, helpers: [{ name: "Markus T.", contact: "markus@example.com" }] },
+          { id: "t13", title: "Grillschicht 2 (14:00 – 16:00)", req: "Heiß & fettig", slots: 2, helpers: [] }
+        ]
+      },
+      {
+        id: "a2", title: "Kuchen- & Kaffeebuffet", icon: "☕",
+        tasks: [
+          { id: "t21", title: "Kuchenspende (Obstkuchen)", req: "Bitte beschriften wegen Allergien", slots: 5, helpers: [{ name: "Sabine M.", contact: "sabine@example.com" }, { name: "Elena K.", contact: "elena@example.com" }] },
+          { id: "t22", title: "Kuchenspende (Trockenkuchen)", req: "Muffins auch okay", slots: 5, helpers: [] },
+          { id: "t23", title: "Verkaufsschicht (12:00 – 14:00)", req: "Wechselgeld-Handling", slots: 2, helpers: [] }
+        ]
+      },
+      {
+        id: "a3", title: "Spielstationen (Schulhof)", icon: "🎯",
+        tasks: [
+          { id: "t31", title: "Dosenwerfen Betreuung", req: "Gute Laune mitbringen", slots: 1, helpers: [] },
+          { id: "t32", title: "Sackhüpfen Organisation", req: "Stoppuhr bereitstellen", slots: 1, helpers: [] }
+        ]
+      }
+    ]
+  }
+};
+
+/* ═══════════════════════════════════════════════
+   HELPERS
+═══════════════════════════════════════════════ */
+function totalProgress() {
+  let total = 0, filled = 0;
+  state.data.areas.forEach(a => a.tasks.forEach(t => { total += t.slots; filled += t.helpers.length; }));
+  return { total, filled, pct: total > 0 ? Math.round(filled / total * 100) : 0 };
+}
+
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+/* ═══════════════════════════════════════════════
+   ACTIONS
+═══════════════════════════════════════════════ */
+function toggleAdmin() {
+  state.admin = !state.admin;
+  document.getElementById('adm-toggle').classList.toggle('on', state.admin);
+  document.getElementById('adm-hint').textContent = state.admin ? 'Kontaktdaten sichtbar' : 'Kontakte ausgeblendet';
+  render();
+}
+
+function toggleArea(id) {
+  state.openAreas[id] = !state.openAreas[id];
+  render();
+}
+
+function toggleForm(taskId) {
+  state.openForms[taskId] = !state.openForms[taskId];
+  render();
+}
+
+function joinTask(areaId, taskId) {
+  const name    = (document.getElementById('inp-name-' + taskId)?.value || '').trim();
+  const contact = (document.getElementById('inp-cont-' + taskId)?.value || '').trim();
+  if (!name || !contact) { showToast('Bitte Name und Kontakt ausfüllen.'); return; }
+  const area = state.data.areas.find(a => a.id === areaId);
+  const task = area.tasks.find(t => t.id === taskId);
+  if (task.helpers.length >= task.slots) return;
+  task.helpers.push({ name, contact });
+  state.myNames.add(name.toLowerCase());
+  state.openForms[taskId] = false;
+  showToast('✓ Eingetragen: ' + name);
+  render();
+}
+
+function leaveTask(areaId, taskId, idx) {
+  const area = state.data.areas.find(a => a.id === areaId);
+  const task = area.tasks.find(t => t.id === taskId);
+  const removed = task.helpers.splice(idx, 1)[0];
+  showToast('Entfernt: ' + removed.name);
+  render();
+}
+
+/* ═══════════════════════════════════════════════
+   RENDER
+═══════════════════════════════════════════════ */
+function render() {
+  const { total, filled, pct } = totalProgress();
+
+  let areasHtml = state.data.areas.map(area => {
+    const aFilled = area.tasks.reduce((s, t) => s + t.helpers.length, 0);
+    const aTotal  = area.tasks.reduce((s, t) => s + t.slots, 0);
+    const isOpen  = !!state.openAreas[area.id];
+
+    let tasksHtml = '';
+    if (isOpen) {
+      tasksHtml = '<div class="tasks-list">' + area.tasks.map(task => {
+        const isFull     = task.helpers.length >= task.slots;
+        const isFormOpen = !!state.openForms[task.id];
+
+        const filledSlots = task.helpers.map((h, i) => {
+          const isOwn = state.myNames.has(h.name.toLowerCase());
+          const canRemove = state.admin || isOwn;
+          const removeBtn = canRemove
+            ? `<button class="slot-remove" onclick="leaveTask('${area.id}','${task.id}',${i})" title="Austragen" aria-label="Austragen">×</button>`
+            : '';
+          const contactSpan = state.admin
+            ? `<span class="slot-contact">&nbsp;(${h.contact})</span>`
+            : '';
+          return `<span class="slot filled"><span class="slot-dot"></span>${h.name}${contactSpan}${removeBtn}</span>`;
+        }).join('');
+
+        const emptySlots = Array.from({ length: task.slots - task.helpers.length })
+          .map(() => `<span class="slot empty">Frei</span>`).join('');
+
+        const action = isFull
+          ? `<span class="badge-full"><i class="ti ti-circle-check" aria-hidden="true"></i> Besetzt</span>`
+          : `<button class="btn${isFormOpen ? ' active' : ''}" onclick="toggleForm('${task.id}')">${isFormOpen ? 'Schließen' : 'Eintragen'}</button>`;
+
+        const form = (isFormOpen && !isFull) ? `
+          <div class="form-panel">
+            <div class="form-grid">
+              <input type="text"  id="inp-name-${task.id}" placeholder="Dein Name (z.B. Tim M.)" autocomplete="name" />
+              <input type="email" id="inp-cont-${task.id}" placeholder="E-Mail oder Tel." autocomplete="email" />
+            </div>
+            <div class="form-footer">
+              <span class="privacy-note">
+                <i class="ti ti-lock" aria-hidden="true" style="color:var(--success);font-size:13px"></i>
+                Kontakt nur für Admin sichtbar
+              </span>
+              <button class="btn btn-success" onclick="joinTask('${area.id}','${task.id}')">Bestätigen</button>
+            </div>
+          </div>` : '';
+
+        return `
+          <div class="task">
+            <div class="task-body">
+              <div class="task-row">
+                <div class="task-text">
+                  <p class="task-title">${task.title}</p>
+                  <p class="task-req">${task.req}</p>
+                  <div class="slots-row">${filledSlots}${emptySlots}</div>
+                </div>
+                <div style="margin-left:8px;flex-shrink:0;padding-top:2px">${action}</div>
+              </div>
+            </div>
+            ${form}
+          </div>`;
+      }).join('') + '</div>';
+    }
+
+    return `
+      <div class="area glass${isOpen ? ' open' : ''}">
+        <div class="area-header" onclick="toggleArea('${area.id}')" role="button" aria-expanded="${isOpen}">
+          <span class="area-emoji" aria-hidden="true">${area.icon}</span>
+          <div class="area-info">
+            <p class="area-name">${area.title}</p>
+            <p class="area-stat">${aFilled} von ${aTotal} Plätzen belegt</p>
+          </div>
+          <i class="ti ti-chevron-down chevron${isOpen ? ' open' : ''}" aria-hidden="true"></i>
+        </div>
+        ${tasksHtml}
+      </div>`;
+  }).join('');
+
+  document.getElementById('app').innerHTML = `
+    <div class="page-header glass">
+      <div class="header-top">
+        <span class="header-emoji">🎉</span>
+        <div>
+          <p class="eyebrow">Schulfest 2026</p>
+          <h1 class="page-title">Helfer gesucht!</h1>
+          <p class="page-date"><i class="ti ti-calendar" aria-hidden="true"></i> Samstag · 12:00 – 16:00 Uhr</p>
+        </div>
+      </div>
+      <div class="global-progress">
+        <div class="progress-meta">
+          <span>Gesamtbelegung</span>
+          <span>${filled} / ${total} · ${pct}%</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" style="width:${pct}%"></div>
+        </div>
+      </div>
+    </div>
+    ${areasHtml}
+  `;
+}
+
+render();
+</script>
+</body>
+</html>

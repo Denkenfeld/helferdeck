@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>HelferDeck Builder</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --glass:        rgba(255,255,255,0.62);
+  --glass-border: rgba(255,255,255,0.75);
+  --glass-deep:   rgba(255,255,255,0.45);
+  --blur:         18px;
+  --text:         #2d2d3a;
+  --text-soft:    #6b6b80;
+  --text-muted:   #a0a0b0;
+  --radius:       18px;
+  --radius-sm:    12px;
+  --accent:       #5b7fff;
+  --accent-light: rgba(91,127,255,0.10);
+  --success:      #34c77b;
+  --danger:       #ff5f7e;
+  --shadow:       0 4px 24px rgba(100,120,200,0.10);
+  --shadow-card:  0 2px 16px rgba(100,120,200,0.09);
+  --bg-color:     #fdf8f4;
+  --subtle-line:  rgba(45,45,58,0.08);
+  --menubar-h:    52px;
+  /* level colors */
+  --col-project:  #5b7fff;
+  --col-area:     #9b6fff;
+  --col-task:     #34c77b;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  min-height: 100vh;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  background: var(--bg-color);
+  overflow-x: hidden;
+}
+
+#bokeh-canvas { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+
+/* ── TOP MENU BAR ── */
+.top-menubar {
+  position: fixed; top: 0; left: 0; right: 0;
+  height: var(--menubar-h);
+  background: rgba(255,255,255,0.85);
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--subtle-line);
+  z-index: 500;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 16px; gap: 12px;
+}
+.menubar-brand { font-size: 15px; font-weight: 700; letter-spacing: -0.3px; color: var(--accent); display: flex; align-items: center; gap: 7px; flex-shrink: 0; }
+.menubar-brand i { font-size: 20px; }
+.menubar-right { display: flex; align-items: center; gap: 10px; }
+.role-select {
+  font-size: 12px; font-weight: 600; color: var(--text-soft);
+  background: rgba(255,255,255,0.7); border: 1px solid var(--subtle-line);
+  border-radius: 20px; padding: 5px 26px 5px 12px;
+  cursor: pointer; outline: none; font-family: inherit;
+  appearance: none; -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23a0a0b0'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center;
+}
+.role-select:focus { border-color: rgba(91,127,255,0.4); }
+.login-btn {
+  width: 34px; height: 34px; border-radius: 50%;
+  background: rgba(91,127,255,0.1); border: 1px solid rgba(91,127,255,0.2);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: var(--accent); font-size: 18px;
+  transition: background 0.2s; flex-shrink: 0;
+}
+.login-btn:hover { background: rgba(91,127,255,0.18); }
+
+.app {
+  position: relative; z-index: 1;
+  max-width: 560px; margin: 0 auto;
+  padding: calc(var(--menubar-h) + 1.5rem) 1rem 6rem;
+  transition: opacity 0.3s ease;
+}
+
+/* ── UI Utilities ── */
+.glass { background: var(--glass); backdrop-filter: blur(var(--blur)); -webkit-backdrop-filter: blur(var(--blur)); box-shadow: var(--shadow); }
+.glass-btn { background: rgba(255,255,255,0.7); color: var(--text); cursor: pointer; border-radius: var(--radius-sm); padding: 12px; display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 600; transition: all 0.2s; border: 1px solid var(--subtle-line) !important; }
+.glass-btn:hover { background: #fff; box-shadow: var(--shadow-card); transform: translateY(-1px); }
+.glass-btn i { font-size: 20px; color: var(--accent); }
+
+/* ── Seamless Inputs ── */
+.seamless-input { width: 100%; background: rgba(255,255,255,0.3); font-family: inherit; color: inherit; outline: none; border-radius: 8px; padding: 6px 10px; transition: background 0.2s, border-color 0.2s; border: 1px solid var(--subtle-line) !important; }
+.seamless-input::placeholder { color: var(--text-muted); }
+.seamless-input:focus { background: rgba(255,255,255,0.85); border-color: rgba(91,127,255,0.4) !important; }
+
+/* ── Dashboard ── */
+.dash-header { margin-bottom: 24px; padding: 0 4px; }
+.dash-title { font-size: 24px; font-weight: 700; letter-spacing: -0.5px; }
+.dash-subtitle { color: var(--text-soft); font-size: 13px; }
+.action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 32px; }
+.section-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); font-weight: 600; margin-bottom: 12px; padding: 0 4px; }
+.deck-list { display: flex; flex-direction: column; gap: 10px; }
+.deck-card { padding: 16px; border-radius: var(--radius); display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: transform 0.2s; border: 1px solid var(--subtle-line) !important; }
+.deck-card:active { transform: scale(0.98); }
+.deck-card h3 { font-size: 15px; font-weight: 600; margin-bottom: 2px; }
+.deck-card p { font-size: 12px; color: var(--text-soft); }
+
+/* ── Template Modal ── */
+.tpl-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.18); z-index: 300; display: flex; align-items: flex-end; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.25s; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+.tpl-modal-overlay.show { opacity: 1; pointer-events: auto; }
+.tpl-sheet { background: var(--glass); border: 1px solid var(--glass-border); backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px); border-radius: var(--radius) var(--radius) 0 0; padding: 24px 20px 32px; width: 100%; max-width: 560px; box-shadow: 0 -8px 40px rgba(0,0,0,0.12); transform: translateY(30px); transition: transform 0.25s; }
+.tpl-modal-overlay.show .tpl-sheet { transform: translateY(0); }
+.tpl-sheet-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 16px; text-align: center; }
+.tpl-list { display: flex; flex-direction: column; gap: 10px; }
+.tpl-item { display: flex; align-items: center; gap: 14px; background: rgba(255,255,255,0.7); border: 1px solid var(--subtle-line); border-radius: var(--radius-sm); padding: 14px 16px; cursor: pointer; transition: all 0.2s; }
+.tpl-item:hover { background: #fff; box-shadow: var(--shadow-card); transform: translateY(-1px); }
+.tpl-icon { font-size: 26px; flex-shrink: 0; }
+.tpl-info h3 { font-size: 14px; font-weight: 700; margin-bottom: 2px; }
+.tpl-info p { font-size: 12px; color: var(--text-soft); }
+.tpl-cancel { margin-top: 14px; width: 100%; background: transparent; border: 1px solid var(--subtle-line); border-radius: var(--radius-sm); padding: 12px; font-size: 13px; font-weight: 600; color: var(--text-muted); cursor: pointer; font-family: inherit; transition: background 0.2s; }
+.tpl-cancel:hover { background: rgba(0,0,0,0.04); }
+
+/* ── Editor Nav ── */
+.nav-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.icon-btn { background: rgba(255,255,255,0.5); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text); transition: background 0.2s; border: 1px solid var(--subtle-line) !important; }
+.icon-btn:hover { background: #fff; }
+.remove-btn { color: var(--danger); background: transparent; border: none !important; cursor: pointer; padding: 8px; font-size: 18px; opacity: 0.45; border-radius: 50%; transition: opacity 0.2s; }
+.remove-btn:hover { opacity: 1; background: rgba(255,95,126,0.08); }
+
+/* ── LEVEL BADGES ── */
+.level-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+  padding: 2px 8px; border-radius: 20px; flex-shrink: 0;
+}
+.level-badge.lvl-project { background: rgba(91,127,255,0.12); color: var(--col-project); }
+.level-badge.lvl-area    { background: rgba(155,111,255,0.12); color: var(--col-area); }
+.level-badge.lvl-task    { background: rgba(52,199,123,0.12);  color: var(--col-task); }
+
+/* ── PROJECT HEADER CARD ── */
+.editor-header {
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 12px;
+  display: flex; flex-direction: column; gap: 10px;
+  border-left: 3px solid var(--col-project) !important;
+  border: 1px solid var(--subtle-line);
+}
+.editor-header-top { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.header-title-input { font-size: 20px; font-weight: 700; letter-spacing: -0.5px; }
+.header-subtitle-input { font-size: 13px; color: var(--text-soft); }
+
+/* ── AREA CARD ── */
+.area-card {
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 12px;
+  background: var(--glass-deep);
+  border: 1px solid rgba(155,111,255,0.18) !important;
+  border-left: 3px solid var(--col-area) !important;
+}
+.area-header-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.emoji-btn { font-size: 22px; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0; background: rgba(255,255,255,0.5); flex-shrink: 0; border: 1px solid var(--subtle-line) !important; border-radius: 12px; }
+.emoji-btn:hover { background: rgba(255,255,255,0.85); }
+.area-title-input { font-size: 15px; font-weight: 600; flex: 1; }
+.area-subtitle-input { font-size: 12px; color: var(--text-soft); }
+.area-inputs { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+
+/* ── TASK ITEM ── */
+.task-item {
+  background: rgba(255,255,255,0.6);
+  border-radius: var(--radius-sm);
+  padding: 12px 12px 12px 14px;
+  margin-bottom: 8px;
+  display: flex; gap: 10px; align-items: flex-start;
+  border: 1px solid rgba(52,199,123,0.18) !important;
+  border-left: 3px solid var(--col-task) !important;
+}
+.task-inputs { flex: 1; display: flex; flex-direction: column; gap: 7px; }
+.task-title-input { font-size: 13px; font-weight: 600; }
+.task-subtitle-input { font-size: 12px; color: var(--text-soft); }
+.task-req-input { font-size: 12px; color: var(--text-soft); }
+.task-slots-input { font-size: 12px; width: 60px; text-align: center; }
+
+.add-btn { width: 100%; background: transparent; color: var(--accent); padding: 11px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 600; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 6px; transition: background 0.2s; border: 1px dashed rgba(91,127,255,0.25) !important; }
+.add-btn:hover { background: rgba(91,127,255,0.05); border-color: rgba(91,127,255,0.45) !important; }
+
+/* ── DATETIME BLOCK (2 rows) ── */
+.dt-block {
+  background: rgba(255,255,255,0.35);
+  border: 1px solid var(--subtle-line);
+  border-radius: 10px;
+  padding: 8px 10px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.dt-row {
+  display: flex; align-items: center; gap: 7px;
+  flex-wrap: nowrap;
+}
+.dt-label {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.07em; color: var(--text-muted);
+  width: 36px; flex-shrink: 0;
+}
+.dt-picker {
+  font-size: 12px; font-family: inherit; color: var(--text-soft);
+  background: rgba(255,255,255,0.5);
+  border: 1px solid var(--subtle-line);
+  border-radius: 7px; padding: 4px 8px;
+  outline: none; cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+  flex-shrink: 0;
+}
+.dt-picker:focus { background: rgba(255,255,255,0.9); border-color: rgba(91,127,255,0.4); }
+.dt-time { width: 78px; }
+.dt-sep { font-size: 11px; color: var(--text-muted); flex-shrink: 0; }
+.dt-check-label {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 11px; color: var(--text-muted);
+  cursor: pointer; user-select: none; flex-shrink: 0; margin-left: auto;
+}
+.dt-check-label input[type=checkbox] { width: 13px; height: 13px; accent-color: var(--accent); cursor: pointer; }
+
+/* ── TIME QUICK PICKER ── */
+.time-quick-row {
+  display: flex; gap: 5px; flex-wrap: wrap; margin-top: 2px;
+}
+.tq-btn {
+  font-size: 11px; font-weight: 600;
+  background: rgba(91,127,255,0.08);
+  color: var(--accent);
+  border: 1px solid rgba(91,127,255,0.18);
+  border-radius: 16px; padding: 3px 9px;
+  cursor: pointer; font-family: inherit;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+.tq-btn:hover { background: rgba(91,127,255,0.18); }
+
+/* ── FAB BAR ── */
+.fab-bar { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(255,255,255,0.88); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-top: 1px solid var(--subtle-line); padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; z-index: 100; gap: 8px; }
+.fab-btn { background: var(--accent); color: #fff; border: none; padding: 10px 18px; border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 12px rgba(91,127,255,0.3); display: flex; align-items: center; gap: 6px; font-family: inherit; }
+.fab-btn.fab-preview { background: rgba(255,255,255,0.9); color: var(--accent); border: 1.5px solid rgba(91,127,255,0.3) !important; box-shadow: none; }
+.fab-btn.fab-preview:hover { background: rgba(91,127,255,0.07); }
+.fab-actions { display: flex; gap: 8px; align-items: center; }
+
+/* ── Preview Modal ── */
+.preview-overlay { position: fixed; inset: 0; z-index: 600; background: rgba(0,0,0,0.28); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.25s; }
+.preview-overlay.show { opacity: 1; pointer-events: auto; }
+.preview-window { width: 92%; max-width: 520px; height: 82vh; background: #fdf8f4; border-radius: var(--radius); overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.22); display: flex; flex-direction: column; transform: scale(0.95); transition: transform 0.25s; }
+.preview-overlay.show .preview-window { transform: scale(1); }
+.preview-bar { background: rgba(255,255,255,0.92); border-bottom: 1px solid var(--subtle-line); padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+.preview-bar-title { font-size: 13px; font-weight: 700; color: var(--text-soft); display:flex;align-items:center;gap:6px; }
+.preview-close { width: 28px; height: 28px; border-radius: 50%; background: rgba(255,95,126,0.1); border: none; color: var(--danger); font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.preview-iframe { flex: 1; border: none; width: 100%; }
+.preview-footer { background: rgba(255,255,255,0.92); border-top: 1px solid var(--subtle-line); padding: 10px 16px; display: flex; gap: 8px; justify-content: flex-end; }
+.preview-export-btn { background: var(--accent); color: #fff; border: none; padding: 9px 18px; border-radius: 18px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; font-family: inherit; }
+
+/* ── Emoji Modal ── */
+.emoji-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.15); z-index: 400; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.2s; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+.emoji-modal-overlay.show { opacity: 1; pointer-events: auto; }
+.emoji-grid-container { background: var(--glass); border: 1px solid var(--glass-border); backdrop-filter: blur(24px); border-radius: var(--radius); padding: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.15); width: 90%; max-width: 320px; }
+.emoji-grid-title { font-size: 12px; font-weight: 600; color: var(--text-soft); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; }
+.emoji-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+.emoji-option { font-size: 24px; cursor: pointer; background: rgba(255,255,255,0.4); padding: 10px 0; border-radius: 8px; transition: background 0.2s; display: flex; align-items: center; justify-content: center; border: 1px solid var(--subtle-line); }
+.emoji-option:hover { background: rgba(255,255,255,0.9); }
+
+/* ── Area/Task Tasks section label ── */
+.tasks-section-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--col-task); opacity: 0.7; margin: 12px 0 6px; padding-left: 2px; display:flex;align-items:center;gap:5px; }
+</style>
+</head>
+<body>
+
+<canvas id="bokeh-canvas"></canvas>
+
+<div class="top-menubar">
+  <div class="menubar-brand"><i class="ti ti-cards"></i> HelferDeck</div>
+  <div class="menubar-right">
+    <select class="role-select" id="role-select" onchange="changeRole(this.value)">
+      <option value="helper">Helfer</option>
+      <option value="guest">Gast</option>
+      <option value="admin">Admin</option>
+    </select>
+    <button class="login-btn" title="Login (demnächst)"><i class="ti ti-user-circle"></i></button>
+  </div>
+</div>
+
+<div class="app" id="app"></div>
+
+<!-- TEMPLATE MODAL -->
+<div id="tpl-modal" class="tpl-modal-overlay" onclick="if(event.target===this)closeTplModal()">
+  <div class="tpl-sheet">
+    <div class="tpl-sheet-title">Vorlage wählen</div>
+    <div class="tpl-list">
+      <div class="tpl-item" onclick="applyTemplate('schulfest')"><span class="tpl-icon">🎪</span><div class="tpl-info"><h3>Schulfest</h3><p>Stände, Spiele, Kuchenbasar &amp; Getränke</p></div></div>
+      <div class="tpl-item" onclick="applyTemplate('ausflug')"><span class="tpl-icon">🚌</span><div class="tpl-info"><h3>Ausflug</h3><p>Fahrzeuge, Begleitung, Verpflegung &amp; Erste Hilfe</p></div></div>
+      <div class="tpl-item" onclick="applyTemplate('mitbringliste')"><span class="tpl-icon">🎒</span><div class="tpl-info"><h3>Mitbringliste</h3><p>Wer bringt was mit – für Feste &amp; Feiern</p></div></div>
+    </div>
+    <button class="tpl-cancel" onclick="closeTplModal()">Abbrechen</button>
+  </div>
+</div>
+
+<!-- EMOJI MODAL -->
+<div id="emoji-modal" class="emoji-modal-overlay" onclick="if(event.target===this) closeEmojiPicker()">
+  <div class="emoji-grid-container">
+    <div class="emoji-grid-title">Icon auswählen</div>
+    <div class="emoji-grid" id="emoji-grid"></div>
+  </div>
+</div>
+
+<!-- PREVIEW MODAL -->
+<div id="preview-overlay" class="preview-overlay" onclick="if(event.target===this)closePreview()">
+  <div class="preview-window">
+    <div class="preview-bar">
+      <span class="preview-bar-title"><i class="ti ti-eye"></i> Vorschau</span>
+      <button class="preview-close" onclick="closePreview()"><i class="ti ti-x"></i></button>
+    </div>
+    <iframe id="preview-iframe" class="preview-iframe"></iframe>
+    <div class="preview-footer">
+      <button class="preview-export-btn" onclick="exportHTML()"><i class="ti ti-download"></i> HTML exportieren</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════
+   BOKEH
+═══════════════════════════════════════════════ */
+(function(){
+  const c=document.getElementById('bokeh-canvas'),ctx=c.getContext('2d');
+  const pal=[[255,215,110],[175,220,255],[195,240,215],[255,200,170]];
+  let o=[];
+  function rz(){c.width=innerWidth;c.height=innerHeight;}
+  function io(){o=Array.from({length:5},()=>({x:Math.random()*c.width,y:Math.random()*c.height,r:150+Math.random()*200,dx:(Math.random()-.5)*.1,dy:(Math.random()-.5)*.1,col:pal[Math.floor(Math.random()*pal.length)],a:.15}));}
+  function st(){
+    ctx.clearRect(0,0,c.width,c.height);ctx.fillStyle='var(--bg-color)';ctx.fillRect(0,0,c.width,c.height);
+    o.forEach(b=>{b.x+=b.dx;b.y+=b.dy;if(b.x<-b.r)b.x=c.width+b.r;if(b.x>c.width+b.r)b.x=-b.r;if(b.y<-b.r)b.y=c.height+b.r;if(b.y>c.height+b.r)b.y=-b.r;
+      const g=ctx.createRadialGradient(b.x,b.y,0,b.x,b.y,b.r);const[r,gr,bl]=b.col;
+      g.addColorStop(0,`rgba(${r},${gr},${bl},${b.a})`);g.addColorStop(1,`rgba(${r},${gr},${bl},0)`);
+      ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);ctx.fillStyle=g;ctx.fill();
+    });requestAnimationFrame(st);
+  }
+  window.addEventListener('resize',()=>{rz();io();});rz();io();st();
+})();
+
+/* ═══════════════════════════════════════════════
+   EMOJI PICKER
+═══════════════════════════════════════════════ */
+const EMOJIS=['🎪','🍖','☕','🎯','🍔','🍻','🎨','🎸','⚽','🛠','🎈','🧸','🧁','🌭','🥗','🎤','🎫','🧹','🗑','⭐','🚌','🎒','🌿','🏕','🧃','🎠','🎡','🎢','🏆','🪴'];
+let currentEmojiArea=null;
+function initEmojiGrid(){document.getElementById('emoji-grid').innerHTML=EMOJIS.map(e=>`<button class="emoji-option" onclick="selectEmoji('${e}')">${e}</button>`).join('');}
+function openEmojiPicker(aId){currentEmojiArea=aId;document.getElementById('emoji-modal').classList.add('show');}
+function closeEmojiPicker(){currentEmojiArea=null;document.getElementById('emoji-modal').classList.remove('show');}
+function selectEmoji(e){if(currentEmojiArea)updateArea(currentEmojiArea,'icon',e);closeEmojiPicker();}
+
+/* ═══════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════ */
+let decks=JSON.parse(localStorage.getItem('helperDecks'))||[];
+let view='home',currentDeckId=null,currentRole='helper';
+function saveToLocal(){localStorage.setItem('helperDecks',JSON.stringify(decks));}
+function generateId(){return Math.random().toString(36).substring(2,9);}
+function changeRole(v){currentRole=v;}
+
+/* ── Time quick presets ── */
+const TIME_PRESETS=[];
+
+/* ── Templates ── */
+const TEMPLATES={
+  schulfest:{
+    title:'Schulfest 2026',subtitle:'Gemeinsam für einen tollen Tag',
+    date:'',timeFrom:'10:00',timeTo:'16:00',showDate:true,showTime:true,
+    areas:[
+      {icon:'☕',title:'Kuchenbasar',subtitle:'Süße Leckereien für alle',showDate:false,showTime:false,date:'',timeFrom:'',timeTo:'',
+        tasks:[
+          {title:'Kuchenspende',subtitle:'',req:'Bitte beschriften',slots:5,showDate:false,showTime:false,date:'',timeFrom:'',timeTo:''},
+          {title:'Kasse Basar',subtitle:'',req:'Wechselgeld mitbringen',slots:2,showDate:false,showTime:false,date:'',timeFrom:'',timeTo:''}
+        ]},
+      {icon:'🎪',title:'Spielstände',subtitle:'',showDate:false,showTime:false,date:'',timeFrom:'',timeTo:'',
+        tasks:[
+          {title:'Dosenwerfen – Schicht 1',subtitle:'',req:'',slots:2,showDate:false,showTime:false,date:'',timeFrom:'',timeTo:''},
+          {title:'Dosenwerfen – Schicht 2',subtitle:'',req:'',slots:2,showDate:false,showTime:false,date:'',timeFrom:'',timeTo:''}
+        ]},
+      {icon:'🍔',title:'Grillstand',subtitle:'',showDate:false,showTime:false,date:'',timeFrom:'',timeTo:'',
+        tasks:[
+          {title:'Grillen',subtitle:'',req:'Erfahrung erwünscht',slots:3,showDate:false,showTime:false,date:'',timeFrom:'',timeTo:''},
+          {title:'Ausgabe & Kasse',subtitle:'',req:'',slots:2,showDate:false,showTime:false,date:'',timeFrom:'',timeTo:''}
+        ]}
+    ]},
+  ausflug:{
+    title:'Klassenausflug',subtitle:'Sicher ankommen, gemeinsam erleben',
+    date:'',timeFrom:'08:00',timeTo:'17:00',showDate:true,showTime:true,
+    areas:[
+      {icon:'🚌',title:'Transport',subtitle:'',showDate:false,showTime:false,date:'',timeFrom:'',timeTo:'',
+        tasks:[
+          {title:'Fahrer Bus 1',subtitle:'',req:'Führerschein Kl. D',slots:1,showDate:false,showTime:false,date:'',timeFrom:'',timeTo:''},
+          {title:'Fahrer Bus 2',subtitle:'',req:'Führerschein Kl. D',slots:1,showDate:false,showTime:false,date:'',timeFrom:'',timeTo:''}
+        ]},
+      {icon:'👩‍🏫',title:'Begleitung',subtitle:'',showDate:false,showTime:false,date:'',timeFrom:'',timeTo:'',
+        tasks:[{title:'Gruppenbegleitung',subtitle:'',req:'Volljährig',slots:4,showDate:false,showTime:false,date:'',timeFrom:'',timeTo:''}]},
+      {icon:'🧃',title:'Verpflegung',subtitle:'',showDate:false,showTime:false,date:'',timeFrom:'',timeTo:'',
+        tasks:[
+          {title:'Getränkekisten',subtitle:'',req:'',slots:2,showDate:false,showTime:false,date:'',timeFrom:'',timeTo:''},
+          {title:'Snackpakete',subtitle:'',req:'',slots:2,showDate:false,showTime:false,date:'',timeFrom:'',timeTo:''}
+        ]},
+      {icon:'🩺',title:'Erste Hilfe',subtitle:'',showDate:false,showTime:false,date:'',timeFrom:'',timeTo:'',
+        tasks:[{title:'Sanitäter / Ersthelfer',subtitle:'',req:'Erste-Hilfe-Kurs',slots:1,showDate:false,showTime:false,date:'',timeFrom:'',timeTo:''}]}
+    ]},
+  mitbringliste:{
+    title:'Was wer mitbringt',subtitle:'Für das Grillfest am Wochenende',
+    date:'',timeFrom:'15:00',timeTo:'22:00',showDate:true,showTime:true,
+    areas:[
+      {icon:'🥗',title:'Essen',subtitle:'',showDate:false,showTime:false,date:'',timeFrom:'',timeTo:'',
+        tasks:[
+          {title:'Salat',subtitle:'',req:'mind. 6 Portionen',slots:2,showDate:false,showTime:false,date:'',timeFrom:'',timeTo:''},
+          {title:'Hauptgericht',subtitle:'',req:'',slots:3,showDate:false,showTime:false,date:'',timeFrom:'',timeTo:''},
+          {title:'Nachtisch',subtitle:'',req:'',slots:2,showDate:false,showTime:false,date:'',timeFrom:'',timeTo:''}
+        ]},
+      {icon:'🍻',title:'Getränke',subtitle:'',showDate:false,showTime:false,date:'',timeFrom:'',timeTo:'',
+        tasks:[
+          {title:'Softdrinks (Kasten)',subtitle:'',req:'',slots:2,showDate:false,showTime:false,date:'',timeFrom:'',timeTo:''},
+          {title:'Wasser (Kasten)',subtitle:'',req:'',slots:2,showDate:false,showTime:false,date:'',timeFrom:'',timeTo:''}
+        ]},
+      {icon:'🎈',title:'Deko & Sonstiges',subtitle:'',showDate:false,showTime:false,date:'',timeFrom:'',timeTo:'',
+        tasks:[
+          {title:'Tischdecken',subtitle:'',req:'',slots:1,showDate:false,showTime:false,date:'',timeFrom:'',timeTo:''},
+          {title:'Servietten & Besteck',subtitle:'',req:'',slots:1,showDate:false,showTime:false,date:'',timeFrom:'',timeTo:''}
+        ]}
+    ]}
+};
+
+function openTplModal(){document.getElementById('tpl-modal').classList.add('show');}
+function closeTplModal(){document.getElementById('tpl-modal').classList.remove('show');}
+function applyTemplate(key){
+  closeTplModal();
+  const t=TEMPLATES[key];
+  const nd={
+    id:generateId(),title:t.title,subtitle:t.subtitle||'',
+    date:t.date,timeFrom:t.timeFrom,timeTo:t.timeTo,showDate:t.showDate,showTime:t.showTime,
+    areas:t.areas.map(a=>({...a,id:generateId(),tasks:a.tasks.map(tk=>({...tk,id:generateId(),helpers:[]}))}))
+  };
+  decks.push(nd);saveToLocal();openEditor(nd.id);
+}
+function createNewDeck(){
+  const nd={id:generateId(),title:'',subtitle:'',date:'',timeFrom:'',timeTo:'',showDate:true,showTime:true,areas:[]};
+  decks.push(nd);saveToLocal();openEditor(nd.id);
+}
+function openEditor(id){currentDeckId=id;view='edit';render();}
+function goHome(){saveToLocal();currentDeckId=null;view='home';render();}
+function updateDeckData(k,v){
+  const d=decks.find(x=>x.id===currentDeckId);
+  if(!d)return;
+  d[k]=v;
+  if(k==='date'||k==='timeFrom'||k==='timeTo'){
+    d.areas.forEach(a=>{
+      if(!a[k]) a[k]=v;
+      a.tasks.forEach(t=>{ if(!t[k]) t[k]=v; });
+    });
+    render();
+  }
+  saveToLocal();
+}
+function updateDeckBool(k,v){const d=decks.find(x=>x.id===currentDeckId);if(d)d[k]=v;saveToLocal();}
+function addArea(){
+  const d=decks.find(x=>x.id===currentDeckId);
+  d.areas.push({id:generateId(),title:'',subtitle:'',icon:'📌',tasks:[],showDate:false,showTime:true,date:d.date||'',timeFrom:d.timeFrom||'',timeTo:d.timeTo||''});
+  render();
+}
+function removeArea(aId){const d=decks.find(x=>x.id===currentDeckId);d.areas=d.areas.filter(a=>a.id!==aId);render();}
+function addTask(aId){
+  const d=decks.find(x=>x.id===currentDeckId);
+  const a=d.areas.find(a=>a.id===aId);
+  a.tasks.push({id:generateId(),title:'',subtitle:'',req:'',slots:2,helpers:[],showDate:false,showTime:true,
+    date:a.date||d.date||'', timeFrom:a.timeFrom||d.timeFrom||'', timeTo:a.timeTo||d.timeTo||''});
+  render();
+}
+function removeTask(aId,tId){const d=decks.find(x=>x.id===currentDeckId);const a=d.areas.find(a=>a.id===aId);a.tasks=a.tasks.filter(t=>t.id!==tId);render();}
+function updateArea(aId,k,v){
+  const d=decks.find(x=>x.id===currentDeckId);
+  const a=d.areas.find(a=>a.id===aId);
+  a[k]=v;
+  if(k==='date'||k==='timeFrom'||k==='timeTo'){
+    a.tasks.forEach(t=>{ if(!t[k]) t[k]=v; });
+    render();
+    return;
+  }
+  saveToLocal();
+  if(k==='icon')render();
+}
+function updateAreaBool(aId,k,v){const d=decks.find(x=>x.id===currentDeckId);const a=d.areas.find(a=>a.id===aId);a[k]=v;saveToLocal();}
+function updateTask(aId,tId,k,v){const d=decks.find(x=>x.id===currentDeckId);const a=d.areas.find(a=>a.id===aId);const t=a.tasks.find(t=>t.id===tId);if(k==='slots')v=parseInt(v)||1;t[k]=v;saveToLocal();}
+function updateTaskBool(aId,tId,k,v){const d=decks.find(x=>x.id===currentDeckId);const a=d.areas.find(a=>a.id===aId);const t=a.tasks.find(t=>t.id===tId);t[k]=v;saveToLocal();}
+function removeDeck(){if(confirm('Deck wirklich löschen?')){decks=decks.filter(d=>d.id!==currentDeckId);goHome();}}
+
+/* ── Apply quick time preset ── */
+function applyTimePreset(scope,p,aId,tId){
+  const[from,to]=TIME_PRESETS[p];
+  if(scope==='deck'){updateDeckData('timeFrom',from);updateDeckData('timeTo',to);}
+  else if(scope==='area'){updateArea(aId,'timeFrom',from);updateArea(aId,'timeTo',to);}
+  else if(scope==='task'){updateTask(aId,tId,'timeFrom',from);updateTask(aId,tId,'timeTo',to);}
+  render();
+}
+
+/* ── Build 2-row datetime block ── */
+function makeDTBlock(opts){
+  return `<div class="dt-block">
+    <div class="dt-row">
+      <span class="dt-label"><i class="ti ti-calendar" style="font-size:13px"></i></span>
+      <input type="date" class="dt-picker" value="${opts.date||''}" onchange="${opts.onDate}" title="Datum">
+      <label class="dt-check-label"><input type="checkbox" ${opts.showDate?'checked':''} onchange="${opts.onShowDate}"> einblenden</label>
+    </div>
+    <div class="dt-row">
+      <span class="dt-label"><i class="ti ti-clock" style="font-size:13px"></i></span>
+      <input type="time" class="dt-picker dt-time" value="${opts.timeFrom||''}" onchange="${opts.onTimeFrom}" title="Von">
+      <span class="dt-sep">–</span>
+      <input type="time" class="dt-picker dt-time" value="${opts.timeTo||''}" onchange="${opts.onTimeTo}" title="Bis">
+      <label class="dt-check-label"><input type="checkbox" ${opts.showTime?'checked':''} onchange="${opts.onShowTime}"> einblenden</label>
+    </div>
+  </div>`;
+}
+
+/* ═══════════════════════════════════════════════
+   PREVIEW & EXPORT
+═══════════════════════════════════════════════ */
+function openPreview(){
+  saveToLocal();
+  const html=buildExportHTML();
+  const blob=new Blob([html],{type:'text/html'});
+  const url=URL.createObjectURL(blob);
+  document.getElementById('preview-iframe').src=url;
+  document.getElementById('preview-overlay').classList.add('show');
+}
+function closePreview(){
+  document.getElementById('preview-overlay').classList.remove('show');
+  document.getElementById('preview-iframe').src='about:blank';
+}
+function exportHTML(){
+  saveToLocal();
+  const deck=decks.find(d=>d.id===currentDeckId);
+  const name=deck.title?deck.title.replace(/\s+/g,'_'):'Neues_Deck';
+  const html=buildExportHTML();
+  const blob=new Blob([html],{type:'text/html'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=`HelferDeck_${name}.html`;a.click();
+  URL.revokeObjectURL(url);
+}
+
+function buildExportHTML(){
+  const deck=decks.find(d=>d.id===currentDeckId);
+  const cleanAreas=deck.areas.map(a=>({...a,tasks:a.tasks.map(t=>({...t,helpers:t.helpers||[]}))}));
+  const areasJSON=JSON.stringify(cleanAreas).replace(/</g,'\\u003c').replace(/>/g,'\\u003e');
+  const titleSafe=(deck.title||'Neues Event').replace(/"/g,'&quot;');
+  const subtitleSafe=(deck.subtitle||'').replace(/"/g,'&quot;');
+
+  function fmtDt(showDate,date,showTime,tf,tt){
+    let p=[];
+    if(showDate&&date){const d=new Date(date);p.push(d.toLocaleDateString('de-DE',{weekday:'long',day:'numeric',month:'long',year:'numeric'}));}
+    if(showTime&&(tf||tt)){if(tf&&tt)p.push(tf+' – '+tt+' Uhr');else if(tf)p.push('ab '+tf+' Uhr');}
+    return p.join(' · ');
+  }
+  const deckDateStr=fmtDt(deck.showDate,deck.date,deck.showTime,deck.timeFrom,deck.timeTo);
+
+  return `<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${titleSafe} – Helfer-Anmeldeplan</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --glass:rgba(255,255,255,0.62);--glass-border:rgba(255,255,255,0.75);--glass-deep:rgba(255,255,255,0.45);
+  --blur:18px;--text:#2d2d3a;--text-soft:#6b6b80;--text-muted:#a0a0b0;
+  --radius:18px;--radius-sm:12px;--accent:#5b7fff;
+  --success:#34c77b;--success-light:rgba(52,199,123,0.13);
+  --danger:#ff5f7e;
+  --shadow:0 4px 24px rgba(100,120,200,0.10);--shadow-card:0 2px 16px rgba(100,120,200,0.09);
+  --menubar-h:52px;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-height:100vh;color:var(--text);font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased;overflow-x:hidden;background:#fdf8f4;}
+#bokeh-canvas{position:fixed;inset:0;z-index:0;pointer-events:none;}
+.app{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:calc(var(--menubar-h) + 2rem) 1rem 4rem;}
+.glass{background:var(--glass);border:1px solid var(--glass-border);backdrop-filter:blur(var(--blur));-webkit-backdrop-filter:blur(var(--blur));box-shadow:var(--shadow);}
+.top-menubar{position:fixed;top:0;left:0;right:0;height:var(--menubar-h);background:rgba(255,255,255,0.85);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid rgba(45,45,58,0.08);z-index:500;display:flex;align-items:center;justify-content:space-between;padding:0 16px;}
+.menubar-brand{font-size:15px;font-weight:700;color:#5b7fff;display:flex;align-items:center;gap:7px;}
+.menubar-brand i{font-size:20px;}
+.login-btn{width:34px;height:34px;border-radius:50%;background:rgba(91,127,255,0.1);border:1px solid rgba(91,127,255,0.2);display:flex;align-items:center;justify-content:center;cursor:pointer;color:#5b7fff;font-size:18px;}
+.page-header{border-radius:var(--radius);padding:1.5rem 1.5rem 1.25rem;margin-bottom:1rem;}
+.header-top{display:flex;align-items:center;gap:14px;margin-bottom:12px;}
+.header-emoji{font-size:36px;line-height:1;filter:drop-shadow(0 2px 6px rgba(0,0,0,.12));}
+.eyebrow{font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--accent);font-weight:600;margin-bottom:3px;}
+.page-title{font-size:22px;font-weight:700;letter-spacing:-.3px;}
+.page-subtitle{font-size:13px;color:var(--text-soft);margin-top:3px;}
+.page-date{font-size:12px;color:var(--text-soft);margin-top:4px;display:flex;align-items:center;gap:5px;}
+.global-progress{margin-top:14px;}
+.progress-meta{display:flex;justify-content:space-between;font-size:12px;color:var(--text-soft);margin-bottom:6px;}
+.progress-track{height:7px;background:rgba(91,127,255,0.12);border-radius:4px;overflow:hidden;}
+.progress-fill{height:100%;background:linear-gradient(90deg,#5b7fff,#a78bfa);border-radius:4px;transition:width .5s;}
+.area{border-radius:var(--radius);margin-bottom:10px;overflow:hidden;}
+.area-header{display:flex;align-items:center;gap:12px;padding:1rem 1.25rem;cursor:pointer;user-select:none;transition:background .15s;border-radius:var(--radius);}
+.area.open .area-header{border-radius:var(--radius) var(--radius) 0 0;}
+.area-emoji{font-size:26px;flex-shrink:0;line-height:1;}
+.area-info{flex:1;min-width:0;}
+.area-name{font-size:15px;font-weight:600;}
+.area-sub{font-size:11px;color:var(--text-soft);margin-top:1px;}
+.area-stat{font-size:12px;color:var(--text-soft);margin-top:2px;}
+.area-datetime{font-size:11px;color:var(--text-muted);margin-top:2px;display:flex;align-items:center;gap:4px;}
+.chevron{font-size:18px;color:var(--text-muted);transition:transform .25s;flex-shrink:0;}
+.chevron.open{transform:rotate(180deg);}
+.tasks-list{padding:0 0.75rem 0.75rem;display:flex;flex-direction:column;gap:8px;}
+.task{background:var(--glass-deep);border:1px solid var(--glass-border);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-radius:var(--radius-sm);overflow:hidden;box-shadow:var(--shadow-card);}
+.task-body{padding:0.8rem 1rem;}
+.task-row{display:flex;align-items:flex-start;gap:8px;}
+.task-text{flex:1;min-width:0;}
+.task-title{font-size:13px;font-weight:600;}
+.task-sub{font-size:11px;color:var(--text-soft);margin-top:1px;}
+.task-req{font-size:11px;color:var(--text-muted);margin-top:2px;}
+.task-datetime{font-size:11px;color:var(--text-muted);margin-top:3px;display:flex;align-items:center;gap:4px;}
+.slots-row{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px;}
+.slot{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:500;padding:3px 10px;border-radius:20px;}
+.slot.filled{background:var(--success-light);color:#1e8a55;border:1px solid rgba(52,199,123,0.25);}
+.slot.empty{background:rgba(255,255,255,0.5);border:1.5px dashed rgba(160,160,176,0.5);color:var(--text-muted);}
+.slot-dot{width:5px;height:5px;border-radius:50%;background:var(--success);flex-shrink:0;}
+.slot-remove{background:none;border:none;cursor:pointer;color:var(--danger);font-size:14px;line-height:1;padding:0 0 0 3px;opacity:.6;}
+.slot-remove:hover{opacity:1;}
+.btn{font-size:11.5px;font-weight:600;padding:6px 14px;border-radius:20px;border:1px solid rgba(91,127,255,0.25);background:rgba(255,255,255,0.7);color:var(--accent);cursor:pointer;white-space:nowrap;flex-shrink:0;transition:background .15s;font-family:inherit;line-height:1.4;}
+.btn:hover{background:rgba(91,127,255,0.1);}
+.btn.active{background:rgba(160,160,176,0.12);color:var(--text-muted);border-color:transparent;}
+.btn-success{background:var(--success);color:#fff;border-color:transparent;font-size:12px;padding:7px 16px;box-shadow:0 2px 10px rgba(52,199,123,0.3);}
+.badge-full{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--success);font-weight:600;padding:5px 0;}
+.form-panel{padding:0.8rem 1rem;border-top:1px solid rgba(255,255,255,0.5);background:rgba(255,255,255,0.3);}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
+@media(max-width:420px){.form-grid{grid-template-columns:1fr;}}
+.form-grid input{font-size:12.5px;padding:8px 12px;border-radius:var(--radius-sm);border:1px solid rgba(91,127,255,0.2);background:rgba(255,255,255,0.75);color:var(--text);font-family:inherit;width:100%;outline:none;}
+.form-grid input:focus{border-color:var(--accent);background:#fff;}
+.form-footer{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.privacy-note{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text-muted);}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(10px);background:rgba(45,45,58,0.9);color:#fff;font-size:13px;font-weight:500;padding:9px 18px;border-radius:20px;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;white-space:nowrap;z-index:200;box-shadow:0 4px 20px rgba(0,0,0,.15);}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+<canvas id="bokeh-canvas"></canvas>
+<div class="top-menubar">
+  <div class="menubar-brand"><i class="ti ti-cards"></i> HelferDeck</div>
+  <div class="login-btn" title="Login (demnächst)"><i class="ti ti-user-circle"></i></div>
+</div>
+<div class="app" id="app"></div>
+<div class="toast" id="toast"></div>
+<script>
+(function(){
+  const c=document.getElementById('bokeh-canvas'),ctx=c.getContext('2d');
+  const pal=[[255,215,110],[175,220,255],[195,240,215],[255,200,170],[160,228,255]];
+  let o=[];
+  function rz(){c.width=innerWidth;c.height=innerHeight;}
+  function io(){o=Array.from({length:7},()=>({x:Math.random()*c.width,y:Math.random()*c.height,r:180+Math.random()*220,dx:(Math.random()-.5)*.12,dy:(Math.random()-.5)*.12,col:pal[Math.floor(Math.random()*pal.length)],a:.13+Math.random()*.1}));}
+  function st(){
+    ctx.clearRect(0,0,c.width,c.height);ctx.fillStyle='#fdf8f4';ctx.fillRect(0,0,c.width,c.height);
+    o.forEach(b=>{b.x+=b.dx;b.y+=b.dy;if(b.x<-b.r)b.x=c.width+b.r;if(b.x>c.width+b.r)b.x=-b.r;if(b.y<-b.r)b.y=c.height+b.r;if(b.y>c.height+b.r)b.y=-b.r;
+      const g=ctx.createRadialGradient(b.x,b.y,0,b.x,b.y,b.r);const[r,gr,bl]=b.col;
+      g.addColorStop(0,\`rgba(\${r},\${gr},\${bl},\${b.a})\`);g.addColorStop(1,\`rgba(\${r},\${gr},\${bl},0)\`);
+      ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);ctx.fillStyle=g;ctx.fill();
+    });requestAnimationFrame(st);
+  }
+  window.addEventListener('resize',()=>{rz();io();});rz();io();st();
+})();
+
+const state={
+  myNames:new Set(),
+  openAreas:{},
+  openForms:{},
+  title:${JSON.stringify(deck.title||'Neues Event')},
+  subtitle:${JSON.stringify(deck.subtitle||'')},
+  deckDateStr:${JSON.stringify(deckDateStr)},
+  data:{areas:${areasJSON}}
+};
+if(state.data.areas.length>0)state.openAreas[state.data.areas[0].id]=true;
+
+function fmtADT(a){let p=[];if(a.showDate&&a.date){const d=new Date(a.date);p.push(d.toLocaleDateString('de-DE',{weekday:'short',day:'numeric',month:'short'}));}if(a.showTime&&(a.timeFrom||a.timeTo)){if(a.timeFrom&&a.timeTo)p.push(a.timeFrom+' – '+a.timeTo+' Uhr');else if(a.timeFrom)p.push('ab '+a.timeFrom+' Uhr');}return p.join(' · ');}
+function fmtTDT(t){let p=[];if(t.showDate&&t.date){const d=new Date(t.date);p.push(d.toLocaleDateString('de-DE',{weekday:'short',day:'numeric',month:'short'}));}if(t.showTime&&(t.timeFrom||t.timeTo)){if(t.timeFrom&&t.timeTo)p.push(t.timeFrom+' – '+t.timeTo+' Uhr');else if(t.timeFrom)p.push('ab '+t.timeFrom+' Uhr');}return p.join(' · ');}
+
+function totalProgress(){let total=0,filled=0;state.data.areas.forEach(a=>a.tasks.forEach(t=>{total+=t.slots;filled+=(t.helpers||[]).length;}));return{total,filled,pct:total>0?Math.round(filled/total*100):0};}
+function showToast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('show'),2200);}
+function toggleArea(id){state.openAreas[id]=!state.openAreas[id];render();}
+function toggleForm(id){state.openForms[id]=!state.openForms[id];render();}
+function joinTask(aId,tId){
+  const name=(document.getElementById('inp-name-'+tId)?.value||'').trim();
+  const contact=(document.getElementById('inp-cont-'+tId)?.value||'').trim();
+  if(!name||!contact){showToast('Bitte Name und Kontakt ausfüllen.');return;}
+  const a=state.data.areas.find(a=>a.id===aId);const t=a.tasks.find(t=>t.id===tId);
+  if(!t.helpers)t.helpers=[];if(t.helpers.length>=t.slots)return;
+  t.helpers.push({name,contact});state.myNames.add(name.toLowerCase());
+  state.openForms[tId]=false;showToast('✓ Eingetragen: '+name);render();
+}
+function leaveTask(aId,tId,i){
+  const a=state.data.areas.find(a=>a.id===aId);const t=a.tasks.find(t=>t.id===tId);
+  const rm=t.helpers.splice(i,1)[0];showToast('Entfernt: '+rm.name);render();
+}
+function render(){
+  const{total,filled,pct}=totalProgress();
+  let areasHtml=state.data.areas.map(area=>{
+    const aF=area.tasks.reduce((s,t)=>s+(t.helpers||[]).length,0);
+    const aT=area.tasks.reduce((s,t)=>s+t.slots,0);
+    const isOpen=!!state.openAreas[area.id];
+    const aDS=fmtADT(area);
+    let th='';
+    if(isOpen){
+      th='<div class="tasks-list">'+area.tasks.map(task=>{
+        const helpers=task.helpers||[];
+        const isFull=helpers.length>=task.slots;
+        const isFormOpen=!!state.openForms[task.id];
+        const tDS=fmtTDT(task);
+        const fs=helpers.map((h,i)=>{const isOwn=state.myNames.has(h.name.toLowerCase());const rb=isOwn?\`<button class="slot-remove" onclick="leaveTask('\${area.id}','\${task.id}',\${i})">×</button>\`:'';return\`<span class="slot filled"><span class="slot-dot"></span>\${h.name}\${rb}</span>\`;}).join('');
+        const es=Array.from({length:task.slots-helpers.length}).map(()=>'<span class="slot empty">Frei</span>').join('');
+        const act=isFull?\`<span class="badge-full"><i class="ti ti-circle-check"></i> Besetzt</span>\`:\`<button class="btn\${isFormOpen?' active':''}" onclick="toggleForm('\${task.id}')">\${isFormOpen?'Schließen':'Eintragen'}</button>\`;
+        const frm=(isFormOpen&&!isFull)?\`<div class="form-panel"><div class="form-grid"><input type="text" id="inp-name-\${task.id}" placeholder="Dein Name"/><input type="email" id="inp-cont-\${task.id}" placeholder="E-Mail / Tel."/></div><div class="form-footer"><span class="privacy-note"><i class="ti ti-lock" style="color:var(--success);font-size:13px"></i> Kontakt nur für Admin</span><button class="btn btn-success" onclick="joinTask('\${area.id}','\${task.id}')">Bestätigen</button></div></div>\`:'';
+        const subRow=task.subtitle?\`<p class="task-sub">\${task.subtitle}</p>\`:'';
+        const dRow=tDS?\`<div class="task-datetime"><i class="ti ti-clock" style="font-size:11px"></i>\${tDS}</div>\`:'';
+        return\`<div class="task"><div class="task-body"><div class="task-row"><div class="task-text"><p class="task-title">\${task.title}</p>\${subRow}<p class="task-req">\${task.req}</p>\${dRow}<div class="slots-row">\${fs}\${es}</div></div><div style="margin-left:8px;flex-shrink:0;padding-top:2px">\${act}</div></div></div>\${frm}</div>\`;
+      }).join('')+'</div>';
+    }
+    const subRow=area.subtitle?\`<p class="area-sub">\${area.subtitle}</p>\`:'';
+    const dRow=aDS?\`<div class="area-datetime"><i class="ti ti-calendar" style="font-size:11px"></i>\${aDS}</div>\`:'';
+    return\`<div class="area glass\${isOpen?' open':''}"><div class="area-header" onclick="toggleArea('\${area.id}')"><span class="area-emoji">\${area.icon}</span><div class="area-info"><p class="area-name">\${area.title}</p>\${subRow}<p class="area-stat">\${aF} von \${aT} Plätzen belegt</p>\${dRow}</div><i class="ti ti-chevron-down chevron\${isOpen?' open':''}"></i></div>\${th}</div>\`;
+  }).join('');
+  const dDS=state.deckDateStr?\`<p class="page-date"><i class="ti ti-calendar"></i> \${state.deckDateStr}</p>\`:'';
+  const subHdr=state.subtitle?\`<p class="page-subtitle">\${state.subtitle}</p>\`:'';
+  document.getElementById('app').innerHTML=\`<div class="page-header glass"><div class="header-top"><span class="header-emoji">🎉</span><div><p class="eyebrow">HelferDeck</p><h1 class="page-title">\${state.title}</h1>\${subHdr}\${dDS}</div></div><div class="global-progress"><div class="progress-meta"><span>Gesamtbelegung</span><span>\${filled} / \${total} · \${pct}%</span></div><div class="progress-track"><div class="progress-fill" style="width:\${pct}%"></div></div></div></div>\${areasHtml}\`;
+}
+render();
+<` + `/script>
+</body>
+</html>`;
+}
+
+/* ═══════════════════════════════════════════════
+   RENDER
+═══════════════════════════════════════════════ */
+function render(){
+  const app=document.getElementById('app');
+  if(view==='home'){
+    const listHtml=decks.length===0
+      ?'<p style="color:var(--text-muted);font-size:13px;padding:0 4px">Noch keine Decks vorhanden.</p>'
+      :decks.map(d=>`
+        <div class="deck-card glass" onclick="openEditor('${d.id}')">
+          <div><h3>${d.title||'Unbenanntes Event'}</h3><p>${d.areas.length} Bereiche</p></div>
+          <i class="ti ti-chevron-right" style="color:var(--text-muted)"></i>
+        </div>`).join('');
+    app.innerHTML=`
+      <div class="dash-header">
+        <h1 class="dash-title">Decks</h1>
+        <p class="dash-subtitle">Organisiere dein nächstes Event</p>
+      </div>
+      <div class="action-grid">
+        <button class="glass-btn" onclick="createNewDeck()"><i class="ti ti-plus"></i> Neues Deck</button>
+        <button class="glass-btn" onclick="openTplModal()"><i class="ti ti-template"></i> Vorlagen</button>
+        <button class="glass-btn"><i class="ti ti-download"></i> Import</button>
+      </div>
+      <h2 class="section-title">Meine Decks</h2>
+      <div class="deck-list">${listHtml}</div>`;
+  } else if(view==='edit'){
+    const deck=decks.find(d=>d.id===currentDeckId);
+
+    const areasHtml=deck.areas.map(area=>{
+      const tasksHtml=area.tasks.map(task=>`
+        <div class="task-item">
+          <div class="task-inputs">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
+              <span class="level-badge lvl-task"><i class="ti ti-subtask" style="font-size:9px"></i> Aufgabe</span>
+            </div>
+            <input class="seamless-input task-title-input" value="${task.title}" onblur="updateTask('${area.id}','${task.id}','title',this.value)" placeholder="Aufgabenname (z.B. Schicht 1)">
+            <input class="seamless-input task-subtitle-input" value="${task.subtitle||''}" onblur="updateTask('${area.id}','${task.id}','subtitle',this.value)" placeholder="Unterzeile (optional, erscheint im Export)">
+            <input class="seamless-input task-req-input" value="${task.req}" onblur="updateTask('${area.id}','${task.id}','req',this.value)" placeholder="Voraussetzung (optional)">
+            <div style="display:flex;gap:8px;align-items:center;">
+              <span style="font-size:11px;color:var(--text-muted)">Helfer-Plätze:</span>
+              <input type="number" min="1" class="seamless-input task-slots-input" value="${task.slots}" onblur="updateTask('${area.id}','${task.id}','slots',this.value)">
+            </div>
+            ${makeDTBlock({
+              date:task.date||'',timeFrom:task.timeFrom||'',timeTo:task.timeTo||'',
+              showDate:!!task.showDate,showTime:task.showTime!==false,
+              onDate:`updateTask('${area.id}','${task.id}','date',this.value)`,
+              onTimeFrom:`updateTask('${area.id}','${task.id}','timeFrom',this.value)`,
+              onTimeTo:`updateTask('${area.id}','${task.id}','timeTo',this.value)`,
+              onShowDate:`updateTaskBool('${area.id}','${task.id}','showDate',this.checked)`,
+              onShowTime:`updateTaskBool('${area.id}','${task.id}','showTime',this.checked)`
+            })}
+          </div>
+          <button class="remove-btn" onclick="removeTask('${area.id}','${task.id}')" title="Aufgabe löschen"><i class="ti ti-trash"></i></button>
+        </div>`).join('');
+
+      return `
+        <div class="area-card">
+          <div class="area-header-row">
+            <button class="seamless-input emoji-btn" onclick="openEmojiPicker('${area.id}')" title="Icon ändern">${area.icon}</button>
+            <div class="area-inputs">
+              <div style="display:flex;align-items:center;gap:6px">
+                <span class="level-badge lvl-area"><i class="ti ti-layout-grid" style="font-size:9px"></i> Bereich</span>
+              </div>
+              <input class="seamless-input area-title-input" value="${area.title}" onblur="updateArea('${area.id}','title',this.value)" placeholder="Bereich benennen (z.B. Grillstand)">
+              <input class="seamless-input area-subtitle-input" value="${area.subtitle||''}" onblur="updateArea('${area.id}','subtitle',this.value)" placeholder="Unterzeile (optional, erscheint im Export)">
+            </div>
+            <button class="remove-btn" onclick="removeArea('${area.id}')"><i class="ti ti-x"></i></button>
+          </div>
+          ${makeDTBlock({
+            date:area.date||'',timeFrom:area.timeFrom||'',timeTo:area.timeTo||'',
+            showDate:!!area.showDate,showTime:area.showTime!==false,
+            onDate:`updateArea('${area.id}','date',this.value)`,
+            onTimeFrom:`updateArea('${area.id}','timeFrom',this.value)`,
+            onTimeTo:`updateArea('${area.id}','timeTo',this.value)`,
+            onShowDate:`updateAreaBool('${area.id}','showDate',this.checked)`,
+            onShowTime:`updateAreaBool('${area.id}','showTime',this.checked)`
+          })}
+          <div class="tasks-section-label"><i class="ti ti-subtask"></i> Aufgaben</div>
+          <div style="margin-bottom:8px">${tasksHtml}</div>
+          <button class="add-btn" onclick="addTask('${area.id}')"><i class="ti ti-plus"></i> Aufgabe hinzufügen</button>
+        </div>`;
+    }).join('');
+
+    app.innerHTML=`
+      <div class="nav-bar">
+        <button class="icon-btn" onclick="goHome()"><i class="ti ti-arrow-left"></i></button>
+        <span style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px">Editor</span>
+        <button class="icon-btn" onclick="removeDeck()"><i class="ti ti-trash"></i></button>
+      </div>
+
+      <div class="editor-header glass">
+        <div class="editor-header-top">
+          <span class="level-badge lvl-project"><i class="ti ti-flag" style="font-size:9px"></i> Projekt</span>
+        </div>
+        <input class="seamless-input header-title-input" value="${deck.title}" onblur="updateDeckData('title',this.value)" placeholder="Event-Titel eingeben">
+        <input class="seamless-input header-subtitle-input" value="${deck.subtitle||''}" onblur="updateDeckData('subtitle',this.value)" placeholder="Unterzeile (optional, erscheint im Export)">
+        ${makeDTBlock({
+          date:deck.date||'',timeFrom:deck.timeFrom||'',timeTo:deck.timeTo||'',
+          showDate:deck.showDate!==false,showTime:deck.showTime!==false,
+          onDate:`updateDeckData('date',this.value)`,
+          onTimeFrom:`updateDeckData('timeFrom',this.value)`,
+          onTimeTo:`updateDeckData('timeTo',this.value)`,
+          onShowDate:`updateDeckBool('showDate',this.checked)`,
+          onShowTime:`updateDeckBool('showTime',this.checked)`
+        })}
+      </div>
+
+      <div class="areas-container">${areasHtml}</div>
+
+      <button class="add-btn glass" style="border:none !important;margin-top:10px;padding:14px;margin-bottom:80px" onclick="addArea()">
+        <i class="ti ti-circle-plus" style="font-size:18px"></i> Neuen Bereich anlegen
+      </button>
+
+      <div class="fab-bar">
+        <span style="font-size:11px;color:var(--text-soft);font-weight:500">Auto-Speichern aktiv</span>
+        <div class="fab-actions">
+          <button class="fab-btn fab-preview" onclick="openPreview()"><i class="ti ti-eye"></i> Vorschau</button>
+          <button class="fab-btn" onclick="exportHTML()"><i class="ti ti-download"></i> Exportieren</button>
+        </div>
+      </div>`;
+  }
+}
+
+initEmojiGrid();
+render();
+</script>
+</body>
+</html>
